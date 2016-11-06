@@ -25,8 +25,11 @@
 
 from FreeCAD import Gui
 import FreeCAD, FreeCADGui, Part, os
-__dir__ = os.path.dirname(__file__)
-iconPath = os.path.join( __dir__, 'Resources', 'icons' )
+from SheetMetalFeature import *
+from SheetMetalViewProvider import *
+
+#__dir__ = os.path.dirname(__file__)
+#iconPath = os.path.join( __dir__, 'Resources', 'icons' )
 
   
 def smMakeFace(edge, dir, from_p, to_p):
@@ -126,10 +129,11 @@ def smBend(bendR = 1.0, bendA = 90.0, flipped = False, extLen = 10.0, gap1 = 0.0
 
 
 
-class SMBendWall:
+class SMBendWall(SMFeature):
   def __init__(self, obj):
     '''"Add Wall with radius bend" '''
-    selobj = Gui.Selection.getSelectionEx()[0]
+    #selobj = Gui.Selection.getSelectionEx()[0]
+    SMFeature.__init__(self, obj)
     
     obj.addProperty("App::PropertyLength","radius","Parameters","Bend Radius").radius = 1.0
     obj.addProperty("App::PropertyLength","length","Parameters","Length of wall").length = 10.0
@@ -139,8 +143,9 @@ class SMBendWall:
     obj.addProperty("App::PropertyAngle","angle","Parameters","Bend angle").angle = 90.0
     obj.addProperty("App::PropertyLength","reliefw","Parameters","Relief width").reliefw = 0.5
     obj.addProperty("App::PropertyLength","reliefd","Parameters","Relief depth").reliefd = 1.0
-    obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj.Object, selobj.SubElementNames)
-    obj.Proxy = self
+#    obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj.Object, selobj.SubElementNames)
+#    obj.Proxy = self
+    
  
   def execute(self, fp):
     '''"Print a short message when doing a recomputation, this method is mandatory" '''
@@ -150,6 +155,7 @@ class SMBendWall:
     fp.Shape = s
 
 
+'''
 class SMViewProviderTree:
   "A View provider that nests children objects under the created one"
       
@@ -196,23 +202,27 @@ class SMViewProviderTree:
     elif isinstance(self.Object.Proxy,SMExtrudeWall):
       return os.path.join( iconPath , 'SMExtrude.svg')
 
+'''
 
+class SMBendWallViewProvider(SMViewProvider):
+  def getIcon(self):
+    return self.getIconPath() + 'AddWall.svg'
 
 
 class AddWallCommandClass():
   """Add Wall command"""
 
   def GetResources(self):
-    return {'Pixmap'  : os.path.join( iconPath , 'AddWall.svg') , # the name of a svg file available in the resources
+    return {'Pixmap'  : SMViewProvider.getIconPath() + 'AddWall.svg' , # the name of a svg file available in the resources
             'MenuText': "Make Wall" ,
             'ToolTip' : "Extends a wall from a side face of metal sheet"}
  
   def Activated(self):
     doc = FreeCAD.ActiveDocument
     doc.openTransaction("Bend")
-    a = doc.addObject("Part::FeaturePython","Bend")
+    a = SMFeature.GetPythonObj("Bend")  
     SMBendWall(a)
-    SMViewProviderTree(a.ViewObject)
+    SMBendWallViewProvider(a.ViewObject)
     doc.recompute()
     doc.commitTransaction()
     return
@@ -256,16 +266,17 @@ def smExtrude(extLength = 10.0, selFaceNames = '', selObjectName = ''):
 
 
   
-class SMExtrudeWall:
+class SMExtrudeWall(SMFeature):
   def __init__(self, obj):
     '''"Add Wall with radius bend" '''
-    selobj = Gui.Selection.getSelectionEx()[0]
+#    selobj = Gui.Selection.getSelectionEx()[0]
+    SMFeature.__init__(self, obj)
     
     obj.addProperty("App::PropertyLength","length","Parameters","Length of wall").length = 10.0
     obj.addProperty("App::PropertyDistance","gap1","Parameters","Gap from left side").gap1 = 0.0
     obj.addProperty("App::PropertyDistance","gap2","Parameters","Gap from right side").gap2 = 0.0
-    obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj.Object, selobj.SubElementNames)
-    obj.Proxy = self
+#    obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj.Object, selobj.SubElementNames)
+#    obj.Proxy = self
 
   def execute(self, fp):
     #s = smExtrude(extLength = fp.length.Value, selFaceNames = self.selFaceNames, selObjectName = self.selObjectName)
@@ -273,21 +284,26 @@ class SMExtrudeWall:
                 selFaceNames = fp.baseObject[1], MainObject = fp.baseObject[0])
     fp.Shape = s
     
+class SMExtrudeWallViewProvider(SMViewProvider):
+  def getIcon(self):
+    return self.getIconPath() + "SMExtrude.svg"
+    
 
 class SMExtrudeCommandClass():
   """Extrude face"""
 
   def GetResources(self):
-    return {'Pixmap'  : os.path.join( iconPath , 'SMExtrude.svg') , # the name of a svg file available in the resources
+    return {'Pixmap'  : SMViewProvider.getIconPath() + 'SMExtrude.svg', # the name of a svg file available in the resources
             'MenuText': "Extrude Face" ,
             'ToolTip' : "Extrude a face along normal"}
  
   def Activated(self):
     doc = FreeCAD.ActiveDocument
     doc.openTransaction("Extrude")
-    a = doc.addObject("Part::FeaturePython","Extrude")
+#    a = doc.addObject("Part::FeaturePython","Extrude")
+    a = SMFeature.GetPythonObj("Extrude")
     SMExtrudeWall(a)
-    SMViewProviderTree(a.ViewObject)
+    SMExtrudeWallViewProvider(a.ViewObject)
     doc.recompute()
     doc.commitTransaction()
     return
