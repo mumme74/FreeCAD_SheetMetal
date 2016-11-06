@@ -1,5 +1,6 @@
 #***************************************************************************
 #*                                                                         *
+#    Copyright 2015 Shai Seger <shaise at gmail dot com>                   *
 #*   Copyright (c) 2016 - Fredrik Johansson <mumme74@github.com>           *  
 #*                                                                         *
 #*   This program is free software; you can redistribute it and/or modify  *
@@ -30,10 +31,8 @@ class SMViewProvider(object):
   def __init__(self, obj):
     obj.Proxy = self
     self.Object = obj.Object
-    print "init ", self
       
   def attach(self, obj):
-    print "attach", self
     self.Object = obj.Object
     return
 
@@ -53,7 +52,6 @@ class SMViewProvider(object):
     return None
 
   def __setstate__(self,state):
-    print "setstate ",state, self
     if state is not None:
       self.Object = FreeCAD.ActiveDocument().getObject(state['ObjectName'])
       
