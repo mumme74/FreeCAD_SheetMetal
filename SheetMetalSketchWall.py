@@ -38,22 +38,23 @@ class SMBendWall(SMFeature):
     obj.addProperty("App::PropertyLength","length","Parameters","Length of wall").length = 10.0
     obj.addProperty("App::PropertyLength","gap1","Parameters","Gap from left side").gap1 = 0.0
     obj.addProperty("App::PropertyLength","gap2","Parameters","Gap from right side").gap2 = 0.0
-    #obj.addProperty("App::PropertyBool","invert","Parameters","Invert bend direction").invert = False
     obj.addProperty("App::PropertyAngle","angle","Parameters","Bend angle").angle = 90.0
     obj.addProperty("App::PropertyLength","reliefw","Parameters","Relief width").reliefw = 0.5
     obj.addProperty("App::PropertyLength","reliefd","Parameters","Relief depth").reliefd = 1.0
  
   def execute(self, fp):
     '''"Print a short message when doing a recomputation, this method is mandatory" '''
-    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value,  flipped = fp.invert, extLen = fp.length.Value, 
+    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
+    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
                 gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = fp.reliefw.Value, reliefD = fp.reliefd.Value,
-                selFaceNames = fp.baseObject[1], MainObject = fp.baseObject[0])
+                qs = prop)
     fp.Shape = s
 
 
 class SMSketchWallViewProvider(SMViewProvider):
   def getIcon(self):
     return self.getIconPath() + "SMAddSketchWall.svg"
+
 
 class SMSketchWallCommandClass():
   """Sketch object"""
@@ -78,11 +79,7 @@ class SMSketchWallCommandClass():
   def IsActive(self):
     if len(Gui.Selection.getSelection()) != 1 or len(Gui.Selection.getSelectionEx()[0].SubElementNames) != 1:
       return False
-    selobj = Gui.Selection.getSelection()[0]
-    selFace = Gui.Selection.getSelectionEx()[0].SubObjects[0]
-    if type(selFace) != Part.Face:
-      return False
-    return True
+    return SMSelProperties.checkSelection()
 
 Gui.addCommand('SMSketchWall',SMSketchWallCommandClass())
 

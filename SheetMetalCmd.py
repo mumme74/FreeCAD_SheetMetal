@@ -28,6 +28,7 @@ import FreeCAD#, FreeCADGui, Part
 from SheetMetalCommon import *
 from SheetMetalFeature import *
 from SheetMetalViewProvider import *
+from SheetMetalCommon import *
 
 
 
@@ -40,7 +41,6 @@ class SMBendWall(SMFeature):
     obj.addProperty("App::PropertyLength","length","Parameters","Length of wall").length = 10.0
     obj.addProperty("App::PropertyLength","gap1","Parameters","Gap from left side").gap1 = 0.0
     obj.addProperty("App::PropertyLength","gap2","Parameters","Gap from right side").gap2 = 0.0
-    #obj.addProperty("App::PropertyBool","invert","Parameters","Invert bend direction").invert = False
     obj.addProperty("App::PropertyAngle","angle","Parameters","Bend angle").angle = 90.0
     obj.addProperty("App::PropertyLength","reliefw","Parameters","Relief width").reliefw = 0.5
     obj.addProperty("App::PropertyLength","reliefd","Parameters","Relief depth").reliefd = 1.0
@@ -48,9 +48,10 @@ class SMBendWall(SMFeature):
  
   def execute(self, fp):
     '''"Print a short message when doing a recomputation, this method is mandatory" '''
-    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value,  flipped = fp.invert, extLen = fp.length.Value, 
+    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
+    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
                 gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = fp.reliefw.Value, reliefD = fp.reliefd.Value,
-                selFaceNames = fp.baseObject[1], MainObject = fp.baseObject[0])
+                qs = prop)
     fp.Shape = s
 
 
@@ -78,13 +79,9 @@ class AddWallCommandClass():
     return
    
   def IsActive(self):
-    if len(Gui.Selection.getSelection()) < 1 or len(Gui.Selection.getSelectionEx()[0].SubElementNames) < 1:
+    if len(Gui.Selection.getSelection()) != 1 or len(Gui.Selection.getSelectionEx()[0].SubElementNames) != 1:
       return False
-    selobj = Gui.Selection.getSelection()[0]
-    for selFace in Gui.Selection.getSelectionEx()[0].SubObjects:
-      if type(selFace) != Part.Face:
-        return False
-    return True
+    return SMSelProperties.checkSelection()
 
 Gui.addCommand('SMMakeWall',AddWallCommandClass())
 
@@ -106,8 +103,9 @@ class SMExtrudeWall(SMFeature):
 
   def execute(self, fp):
     #s = smExtrude(extLength = fp.length.Value, selFaceNames = self.selFaceNames, selObjectName = self.selObjectName)
+    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
     s = smBend(bendA = 0.0,  extLen = fp.length.Value, gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = 0.0,
-                selFaceNames = fp.baseObject[1], MainObject = fp.baseObject[0])
+                qs = prop)
     fp.Shape = s
     
 class SMExtrudeWallViewProvider(SMViewProvider):
@@ -136,10 +134,6 @@ class SMExtrudeCommandClass():
   def IsActive(self):
     if len(Gui.Selection.getSelection()) < 1 or len(Gui.Selection.getSelectionEx()[0].SubElementNames) < 1:
       return False
-    selobj = Gui.Selection.getSelection()[0]
-    for selFace in Gui.Selection.getSelectionEx()[0].SubObjects:
-      if type(selFace) != Part.Face:
-        return False
-    return True
+    return SMSelProperties.checkSelection()
 
 Gui.addCommand('SMExtrudeFace',SMExtrudeCommandClass())
