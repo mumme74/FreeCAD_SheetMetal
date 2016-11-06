@@ -40,7 +40,7 @@ class SMBendWall(SMFeature):
     obj.addProperty("App::PropertyLength","length","Parameters","Length of wall").length = 10.0
     obj.addProperty("App::PropertyLength","gap1","Parameters","Gap from left side").gap1 = 0.0
     obj.addProperty("App::PropertyLength","gap2","Parameters","Gap from right side").gap2 = 0.0
-    obj.addProperty("App::PropertyBool","invert","Parameters","Invert bend direction").invert = False
+    #obj.addProperty("App::PropertyBool","invert","Parameters","Invert bend direction").invert = False
     obj.addProperty("App::PropertyAngle","angle","Parameters","Bend angle").angle = 90.0
     obj.addProperty("App::PropertyLength","reliefw","Parameters","Relief width").reliefw = 0.5
     obj.addProperty("App::PropertyLength","reliefd","Parameters","Relief depth").reliefd = 1.0

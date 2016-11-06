@@ -93,14 +93,15 @@ def smBend(bendR = 1.0, bendA = 90.0, flipped = False, extLen = 10.0, gap1 = 0.0
       reliefSolid = reliefFace.extrude(selFace.normalAt(0,0) * reliefD * -1)
       #Part.show(reliefSolid)
       resultSolid = resultSolid.cut(reliefSolid)
-   
+
     #find revolve point
-    if not(flipped):
+    if bendA >= 0: # not(flipped):
       revAxisP = thkEdge.valueAt(thkEdge.LastParameter + bendR)
       revAxisV = revAxisV * -1
     else:
+      bendA = bendA * -1
       revAxisP = thkEdge.valueAt(thkEdge.FirstParameter - bendR)  
-    
+
     # create bend
     wallFace = revFace
     if bendA > 0 :
