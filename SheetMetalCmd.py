@@ -48,11 +48,12 @@ class SMBendWall(SMFeature):
  
   def execute(self, fp):
     '''"Print a short message when doing a recomputation, this method is mandatory" '''
-    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
-    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
+    wall = SMWall(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
                 gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = fp.reliefw.Value, reliefD = fp.reliefd.Value,
-                qs = prop)
-    fp.Shape = s
+                fp = fp)
+    wall.hinge()
+    wall.extrude()
+    fp.Shape = wall.finish()
 
 
 class SMBendWallViewProvider(SMViewProvider):
@@ -102,11 +103,11 @@ class SMExtrudeWall(SMFeature):
     obj.addProperty("App::PropertyDistance","gap2","Parameters","Gap from right side").gap2 = 0.0
 
   def execute(self, fp):
-    #s = smExtrude(extLength = fp.length.Value, selFaceNames = self.selFaceNames, selObjectName = self.selObjectName)
-    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
-    s = smBend(bendA = 0.0,  extLen = fp.length.Value, gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = 0.0,
-                qs = prop)
-    fp.Shape = s
+    wall = SMWall(bendA = 0.0,  extLen = fp.length.Value, gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = 0.0,
+                fp = fp)
+    wall.hinge() # needed because reliefs and gap is done in there
+    wall.extrude()
+    fp.Shape = wall.finish()
     
 class SMExtrudeWallViewProvider(SMViewProvider):
   def getIcon(self):

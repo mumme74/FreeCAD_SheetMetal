@@ -44,11 +44,12 @@ class SMBendWall(SMFeature):
  
   def execute(self, fp):
     '''"Print a short message when doing a recomputation, this method is mandatory" '''
-    prop = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
-    s = smBend(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
-                gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = fp.reliefw.Value, reliefD = fp.reliefd.Value,
-                qs = prop)
-    fp.Shape = s
+    wall = SMWall(bendR = fp.radius.Value, bendA = fp.angle.Value, extLen = fp.length.Value, 
+               gap1 = fp.gap1.Value, gap2 = fp.gap2.Value, reliefW = fp.reliefw.Value, reliefD = fp.reliefd.Value,
+               fp = fp)
+    wall.hinge()
+    wall.addSketchNormalToPlane()
+    fp.Shape = wall.finish()
 
 
 class SMSketchWallViewProvider(SMViewProvider):

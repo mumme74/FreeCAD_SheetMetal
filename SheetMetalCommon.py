@@ -27,7 +27,9 @@ import FreeCAD, FreeCADGui, Part
 class SMSelProperties:
   def __init__(self, obj, subObjectName):
     "class to find revolve axis etc from either face or edge"
+    self.initialized = False
     if not obj: return
+    
     self.MainObject = obj
     self.selShape = obj.Shape.getElement(subObjectName)
     self.thickness = 999999.0          # thickness of metal sheet
@@ -36,7 +38,6 @@ class SMSelProperties:
     self.selFace = None                # the face that this attaches to
     self.thicknessDir = None           # Vector that points to short side of plate
     self.revEdge = None                # revolve around this edge
-    self.initialized = False
   
     if type(self.selShape) == Part.Face:
       # user selected face
@@ -130,7 +131,26 @@ class SMSelProperties:
 # -------------- end class -------------
 
 
-def smMakeFace(edge, dir, from_p, to_p):
+class SMWall:
+  def __init__(self, bendR = 1.0, bendA = 90.0, extLen = 0.0, gap1 = 0.0, gap2 = 0.0, 
+               reliefW = 0.5, reliefD = 1.0, qs = SMSelProperties(None,''), fp = None):
+    if not qs.initialized and not fp: return
+    self.bendR = bendR          # bend radious
+    self.bendA = bendA          # bend Angle
+    self.extLen = extLen        # extend a square pad with this length
+    self.gap1 = gap1            # hinge gap from mating edge
+    self.gap2 = gap2            # same but other side
+    self.reliefW = reliefW      # a relief cutout width (when using gaps)
+    self.reliefD = reliefD      # a relief cutout height (when using gaps)
+    self.fp = fp                # a feature python object to build from
+    if not qs.initialized:
+      qs = SMSelProperties(fp.baseObject[0], fp.baseObject[1][0])
+    self.qs = qs
+    self.Shape = self.qs.MainObject.Shape
+    self.wallFace = qs.selFace
+
+
+  def _makeFace(self, edge, dir, from_p, to_p):
     e1 = edge.copy()
     e1.translate(dir * from_p)
     e2 = edge.copy()
@@ -140,78 +160,118 @@ def smMakeFace(edge, dir, from_p, to_p):
     w = Part.Wire([e1,e3,e2,e4])
     return Part.Face(w)
 
+  def hinge(self):
+    "creates a hinge to extrude a wall onto"
+    # narrow the wall if we have gaps
+    revDir = self.qs.revAxisV.normalize()
+    lgap2 = self.qs.revEdge.Length - self.gap2
+    if self.gap1 == 0 and self.gap2 == 0:
+      revFace = self.qs.selFace
+    else:
+      revFace = self._makeFace(self.qs.thicknessEdge, revDir, self.gap1, lgap2)
+      if (revFace.normalAt(0,0) != self.qs.selFace.normalAt(0,0)):
+        revFace.reverse()
+    
+    # remove relief if needed
+    if self.reliefW > 0 and self.reliefD > 0 and (self.gap1 > 0 or self.gap2 > 0) :
+      thicknessEdgeW = Part.Line(self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.FirstParameter-0.1), 
+                                 self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.LastParameter+0.1)).toShape()
+      reliefFace = self._makeFace(thicknessEdgeW, revDir, self.gap1 - self.reliefW, self.gap1)
+      reliefFace = reliefFace.fuse(self._makeFace(thicknessEdgeW, revDir, lgap2, lgap2 + self.reliefW))
+      reliefSolid = reliefFace.extrude(self.qs.selFace.normalAt(0,0) * self.reliefD * -1)
+      #Part.show(reliefSolid)
+      self.Shape = self.Shape.cut(reliefSolid)
 
-def smBend(bendR = 1.0, bendA = 90.0, flipped = False, extLen = 10.0, gap1 = 0.0, gap2 = 0.0, 
-            reliefW = 0.5, reliefD = 1.0, qs = SMSelProperties(None,'')):
+    #find revolve point
+    if self.bendA >= 0: # not(flipped):
+      revAxisP = self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.LastParameter + self.bendR)
+      self.qs.revAxisV = self.qs.revAxisV * -1
+      bendA = self.bendA
+    else:
+      bendA = self.bendA * -1
+      revAxisP = self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.FirstParameter - self.bendR)  
+
+    # create bend
+    wallFace = revFace
+    if bendA > 0.0 :
+      bendSolid = revFace.revolve(revAxisP, self.qs.revAxisV, bendA)
+      #Part.show(bendSolid)
+      self.Shape = self.Shape.fuse(bendSolid)
+      self.wallFace = revFace.copy()
+      self.wallFace.rotate(revAxisP, self.qs.revAxisV, bendA)
   
-  resultSolid = qs.MainObject.Shape
-     
-  # narrow the wall if we have gaps
-  revDir = qs.revAxisV.normalize()
-  lgap2 = qs.revEdge.Length - gap2
-  if gap1 == 0 and gap2 == 0:
-    revFace = qs.selFace
-  else:
-    revFace = smMakeFace(qs.thicknessEdge, revDir, gap1, lgap2)
-    if (revFace.normalAt(0,0) != qs.selFace.normalAt(0,0)):
-      revFace.reverse()
-    
-  # remove relief if needed
-  if reliefW > 0 and reliefD > 0 and (gap1 > 0 or gap2 > 0) :
-    thicknessEdgeW = Part.Line(qs.thicknessEdge.valueAt(qs.thicknessEdge.FirstParameter-0.1), 
-                               qs.thicknessEdge.valueAt(qs.thicknessEdge.LastParameter+0.1)).toShape()
-    reliefFace = smMakeFace(thicknessEdgeW, revDir, gap1 - reliefW, gap1)
-    reliefFace = reliefFace.fuse(smMakeFace(thicknessEdgeW, revDir, lgap2, lgap2 + reliefW))
-    reliefSolid = reliefFace.extrude(qs.selFace.normalAt(0,0) * reliefD * -1)
-    #Part.show(reliefSolid)
-    resultSolid = resultSolid.cut(reliefSolid)
-
-  #find revolve point
-  if bendA >= 0: # not(flipped):
-    revAxisP = qs.thicknessEdge.valueAt(qs.thicknessEdge.LastParameter + bendR)
-    qs.revAxisV = qs.revAxisV * -1
-  else:
-    bendA = bendA * -1
-    revAxisP = qs.thicknessEdge.valueAt(qs.thicknessEdge.FirstParameter - bendR)  
-
-  # create bend
-  wallFace = revFace
-  if bendA > 0 :
-    bendSolid = revFace.revolve(revAxisP, qs.revAxisV, bendA)
-    #Part.show(bendSolid)
-    resultSolid = resultSolid.fuse(bendSolid)
-    wallFace = revFace.copy()
-    wallFace.rotate(revAxisP, qs.revAxisV, bendA)
-    
-  # create wall
-  if extLen > 0 :
-    wallSolid = wallFace.extrude(wallFace.normalAt(0,0) * extLen)
-    resultSolid = resultSolid.fuse(wallSolid)
+  
+  def extrude(self):
+    "extrudes a square wall from the face of our hinge"
+    if self.extLen > 0 :
+      self.wallSolid = self.wallFace.extrude(self.wallFace.normalAt(0,0) * self.extLen)
+      self.Shape = self.Shape.fuse(self.wallSolid)
       
-  Gui.ActiveDocument.getObject(qs.MainObject.Name).Visibility = False
-  return resultSolid
+    
+    
+    
+  def finish(self):
+    Gui.ActiveDocument.getObject(self.qs.MainObject.Name).Visibility = False
+    return self.Shape
+    
   
-  
-  
-def smExtrude(extLength = 10.0, selFaceNames = '', selObjectName = ''):
-  
-#  selFace = Gui.Selection.getSelectionEx()[0].SubObjects[0]
-#  selObjectName = Gui.Selection.getSelection()[0].Name
-  AAD = FreeCAD.ActiveDocument
-  MainObject = AAD.getObject( selObjectName )
-  finalShape = MainObject.Shape
-  for selFaceName in selFaceNames:
-    selFace = AAD.getObject(selObjectName).Shape.getElement(selFaceName)
+  def addSketchNormalToPlane(self):
+    import Sketcher
+    
+    doc = FreeCAD.activeDocument()
 
-    # extrusion direction
-    V_extDir = selFace.normalAt( 0,0 )
+    sk = doc.addObject("Sketcher::SketchObject","WallSketch")
+    
+    # find wallFace edges
+    longEdge = None
+    for edge in self.wallFace.Edges:
+      if not longEdge:
+        longEdge = edge
+      elif longEdge.Length < edge.Length:
+        shortEdge = longEdge
+        longEdge = edge
+      else:
+        shortEdge = edge
+    halfLen = longEdge.Length / 2
+    
+    if hasattr(sk, 'MapMode'):
+      sk.MapMode = "Translate"
+    
+    revAxisV = (shortEdge.valueAt(shortEdge.LastParameter) - 
+                shortEdge.valueAt(shortEdge.FirstParameter))
+    #App.Placement(App.Vector(1,-2,0),App.Rotation(App.Vector(0,0,1),3))
+    sk.Placement = FreeCAD.Placement(longEdge.valueAt(longEdge.FirstParameter + halfLen), FreeCAD.Rotation(revAxisV,0))
 
-    # extrusion
-    wallFace = selFace.extrude( V_extDir*extLength )
-    finalShape = finalShape.fuse( wallFace )
-  
-  #finalShape = finalShape.removeSplitter()
-  #finalShape = Part.Solid(finalShape.childShapes()[0])  
-  Gui.ActiveDocument.getObject( selObjectName ).Visibility = False
-  return finalShape
+    # set some constants for the constraints
+    StartPoint = 1
+    EndPoint = 2
+    MiddlePoint = 3
+        
+    # add geometry to the sketch
+    leftTop = FreeCAD.Vector(-(halfLen + 5),10,0)
+    leftBottom = FreeCAD.Vector(-halfLen,0,0)
+    rightTop = FreeCAD.Vector((halfLen + 5),12,0)
+    rightBottom = FreeCAD.Vector(halfLen,0,0)
+
+    sk.Geometry = [Part.Line(leftTop,rightTop),
+                   Part.Line(rightTop,rightBottom), 
+                   Part.Line(rightBottom,leftBottom),
+                   Part.Line(leftBottom,leftTop)]
+
+    # add constraint to make it a rectangle
+    l = sk.Constraints
+    l.append(Sketcher.Constraint('Coincident',0,EndPoint,1,StartPoint))
+    l.append(Sketcher.Constraint('Coincident',1,EndPoint,2,StartPoint))
+    l.append(Sketcher.Constraint('Coincident',2,EndPoint,3,StartPoint))
+    l.append(Sketcher.Constraint('Coincident',3,EndPoint,0,StartPoint))
+    sk.Constraints = l
+    #doc.recompute()
+
+    #face = Part.Face(sk.Shape)
+    #wall = face.extrude(Base.Vector(0, 0, self.qs.thickness))
+    #obj = doc.getObject('SketchWall').Shape.fuse(wall)
+    #sk.ViewObject.Visibility = False
+    #Part.show(obj)
+    #Part.show(wall)
+    #doc.recompute()
 
