@@ -24,6 +24,9 @@
 from FreeCAD import Gui
 import FreeCAD, FreeCADGui, Part
 
+#import rpdb2
+#rpdb2.start_embedded_debugger("freecad")
+
 class SMSelProperties:
   def __init__(self, obj, subObjectName):
     "class to find revolve axis etc from either face or edge"
@@ -240,6 +243,7 @@ class SMWall:
     revAxisV = (shortEdge.valueAt(shortEdge.LastParameter) - 
                 shortEdge.valueAt(shortEdge.FirstParameter))
     #App.Placement(App.Vector(1,-2,0),App.Rotation(App.Vector(0,0,1),3))
+    print revAxisV
     sk.Placement = FreeCAD.Placement(longEdge.valueAt(longEdge.FirstParameter + halfLen), FreeCAD.Rotation(revAxisV,0))
 
     # set some constants for the constraints
