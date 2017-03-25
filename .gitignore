@@ -1,2 +1,7 @@
 *.pyc
 /SheetMetal2.py
+
+*.config
+*.files
+*.includes
+*.creator
