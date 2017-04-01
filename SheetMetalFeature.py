@@ -24,6 +24,7 @@ import FreeCAD
 from FreeCAD import Gui
 
 def smWarnDialog(msg):
+    from PySide import QtCore, QtGui
     diag = QtGui.QMessageBox(QtGui.QMessageBox.Warning, 'Error in macro MessageBox', msg)
     diag.setWindowModality(QtCore.Qt.ApplicationModal)
     diag.exec_()
@@ -50,6 +51,9 @@ def smIsOperationLegal(body, selobj):
 
 class SMFeature(object):
   def __init__(self, featureObj):
+    selobj = Gui.Selection.getSelectionEx()
+    if len(selobj):
+      featureObj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj[0].Object, selobj[0].SubElementNames)
     featureObj.Proxy = self
     
   @staticmethod
@@ -62,16 +66,12 @@ class SMFeature(object):
       activeBody = view.getActiveObject('pdbody')
     if not smIsOperationLegal(activeBody, selobj):
         return
-    isPartDesign = not (activeBody == None or not smIsPartDesign(selobj))
-    objType = "Part::FeaturePython" if isPartDesign  else "PartDesign::FeaturePython"
+    isPartDesign = (activeBody !=None and smIsPartDesign(selobj))
+    objType = "PartDesign::FeaturePython" if isPartDesign  else "Part::FeaturePython"
     obj = FreeCAD.activeDocument().addObject(objType, name)
     if isPartDesign and activeBody != None:
       activeBody.addObject(obj)
       
-    selected = Gui.Selection.getSelectionEx()
-    if len(selected):
-      obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selected[0].Object, selected[0].SubElementNames)
-    
 #      # need PartDesign::FeaturePython
 #      if isPartDesign:
 #        for o in selected[0].Object.InList:

@@ -25,6 +25,7 @@ import FreeCAD, os
 from FreeCAD import Gui
 from SheetMetalCommon import *
 from SheetMetalFeature import *
+from SheetMetalViewProvider import *
 
 
 class SMViewProvider(object):

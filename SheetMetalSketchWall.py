@@ -83,4 +83,3 @@ class SMSketchWallCommandClass():
 
 Gui.addCommand('SMSketchWall',SMSketchWallCommandClass())
 
-

@@ -23,6 +23,9 @@
 
 from FreeCAD import Gui
 import FreeCAD, FreeCADGui, Part
+from SheetMetalFeature import *
+
+smEpsilon = 0.0000001
 
 
 def smStrEdge(e):
@@ -63,7 +66,7 @@ class SMSelProperties:
       
       # user picked the short, thickness side
       if self.selFace == None:
-        FreeCAD.Console.PrintWarning("Can't build from selected edge")
+        smWarnDialog("Can't build from selected edge")
         return
     else:
       # unsupported selection
@@ -76,12 +79,13 @@ class SMSelProperties:
         self.thicknessEdge = edge
         
     # may need to reverse thicknessEdge
-    if (self.revEdge and 
-       (self.thicknessEdge.valueAt(self.thicknessEdge.LastParameter) == 
-        self.revEdge.valueAt(self.revEdge.FirstParameter))):
-      e1 = self.thicknessEdge.valueAt(self.thicknessEdge.LastParameter)
-      e0 = self.thicknessEdge.valueAt(self.thicknessEdge.FirstParameter)
-      self.thicknessEdge = Part.Edge(Part.Line(e1, e0))
+    #if (self.revEdge and 
+    #   (self.thicknessEdge.valueAt(self.thicknessEdge.LastParameter) == 
+    #    self.revEdge.valueAt(self.revEdge.FirstParameter))):
+    #  e1 = self.thicknessEdge.valueAt(self.thicknessEdge.LastParameter)
+    #  e0 = self.thicknessEdge.valueAt(self.thicknessEdge.FirstParameter)
+    #  self.thicknessEdge = Part.Edge(Part.Line(e1, e0))
+    #  print("reverse thkness", e0, e1, self.thicknessEdge.Length)
     
     
     # main corner
@@ -104,8 +108,7 @@ class SMSelProperties:
 
     self.thicknessDir = (self.thicknessEdge.valueAt(self.thicknessEdge.LastParameter) -
                          self.thicknessEdge.valueAt(self.thicknessEdge.FirstParameter))
-                         
-                         
+
     if (self.revEdge.valueAt(self.revEdge.FirstParameter) == p0):
       self.revAxisV = (self.revEdge.valueAt(self.revEdge.LastParameter) - 
                        self.revEdge.valueAt(self.revEdge.FirstParameter))
@@ -114,7 +117,7 @@ class SMSelProperties:
                        self.revEdge.valueAt(self.revEdge.LastParameter))
         
     #make sure the direction vector is correct in respect to the normal
-    if self.thicknessDir.cross(self.revAxisV).normalize() == self.selFace.normalAt(0,0):
+    if (self.thicknessDir.cross(self.revAxisV).normalize() - self.selFace.normalAt(0,0)).Length < smEpsilon:
       self.revAxisV *= -1
   
     self.initialized = True
@@ -197,7 +200,7 @@ class SMWall:
       bendA = self.bendA
     else:
       bendA = self.bendA * -1
-      revAxisP = self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.FirstParameter - self.bendR)  
+      revAxisP = self.qs.thicknessEdge.valueAt(self.qs.thicknessEdge.FirstParameter - self.bendR)
 
     # create bend
     wallFace = revFace
@@ -211,8 +214,8 @@ class SMWall:
   
   def extend(self):
     "extend a square wall from the face of our hinge"
-    if self.extLen > 0 :
-      self.wallSolid = self.wallFace.extend(self.wallFace.normalAt(0,0) * self.extLen)
+    if self.extLen > 0.0 :
+      self.wallSolid = self.wallFace.extrude(self.wallFace.normalAt(0,0) * self.extLen)
       self.Shape = self.Shape.fuse(self.wallSolid)
       
     

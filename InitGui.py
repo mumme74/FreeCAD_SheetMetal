@@ -66,7 +66,7 @@ static char * D:\shai\FreeCAD\mkwall_xpm[] = {
         import SheetMetalCmd # import here all the needed files that create your FreeCAD commands
         import SheetMetalUnfolder
         import SheetMetalSketchWall
-        self.list = ["SMMakeWall", "SMExtrudeFace", "SMSketchWall", "SMUnfold"] # A list of command names created in the line above
+        self.list = ["SMMakeWall", "SMExtendFace", "SMSketchWall", "SMUnfold"] # A list of command names created in the line above
         self.appendToolbar("Sheet metal",self.list) # creates a new toolbar with your commands
         # self.appendMenu("My New Menu",self.list) # creates a new menu
         # self.appendMenu(["An existing Menu","My submenu"],self.list) # appends a submenu to an existing menu
