@@ -51,9 +51,6 @@ def smIsOperationLegal(body, selobj):
 
 class SMFeature(object):
   def __init__(self, featureObj):
-    selobj = Gui.Selection.getSelectionEx()
-    if len(selobj):
-      featureObj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selobj[0].Object, selobj[0].SubElementNames)
     featureObj.Proxy = self
     
   @staticmethod
@@ -61,23 +58,20 @@ class SMFeature(object):
     '''Returns a FreeCAD PartDesign feature'''
     view = Gui.ActiveDocument.ActiveView
     activeBody = None
-    selobj = Gui.Selection.getSelectionEx()[0].Object
+    selection = Gui.Selection.getSelectionEx()[0]
     if hasattr(view,'getActiveObject'):
       activeBody = view.getActiveObject('pdbody')
-    if not smIsOperationLegal(activeBody, selobj):
+    if not smIsOperationLegal(activeBody, selection.Object):
         return
-    isPartDesign = (activeBody !=None and smIsPartDesign(selobj))
+    isPartDesign = (activeBody !=None and smIsPartDesign(selection.Object))
     objType = "PartDesign::FeaturePython" if isPartDesign  else "Part::FeaturePython"
+    #create the object and add baseObject from selection
     obj = FreeCAD.activeDocument().addObject(objType, name)
+    obj.addProperty("App::PropertyLinkSub", "baseObject", "Parameters", "Base object").baseObject = (selection.Object, selection.SubElementNames)
+
+    # add to parDesign body (this clears the selection)
     if isPartDesign and activeBody != None:
       activeBody.addObject(obj)
-      
-#      # need PartDesign::FeaturePython
-#      if isPartDesign:
-#        for o in selected[0].Object.InList:
-#          if o.TypeId == 'PartDesign::Body':
-#            o.addFeature(obj)
-#            break
  
     return obj 
 
